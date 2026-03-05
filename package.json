@@ -1,0 +1,15 @@
+{
+  "name": "tricube-tales-solo",
+  "version": "1.0.0",
+  "description": "Solo RPG companion for Tricube Tales",
+  "source": "src/index.html",
+  "scripts": {
+    "start": "npx parcel",
+    "build": "npx parcel build"
+  },
+  "devDependencies": {
+    "@parcel/packager-raw-url": "^2.16.4",
+    "@parcel/transformer-webmanifest": "^2.12.0",
+    "parcel": "^2.12.0"
+  }
+}

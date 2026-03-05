@@ -1,0 +1,15 @@
+{
+  "name": "Tricube Tales Solo",
+  "short_name": "Tricube",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10ad91",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/122/122934.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

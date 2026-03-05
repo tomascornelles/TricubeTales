@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tricube Tales Solo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="manifest" href="./manifest.json">
+    <style>
+        :root { --primary: #10ad91; }
+        .hidden { display: none; }
+        .dice-result { font-size: 2.5rem; font-weight: bold; text-align: center; margin: 1rem 0; color: var(--primary); }
+        .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; text-align: center; }
+    </style>
+</head>
+<body>
+    <nav class="container">
+        <ul><li><strong id="txt-title">Tricube Tales</strong></li></ul>
+        <ul>
+            <li>
+                <select id="lang-selector" style="margin-bottom: 0; width: auto;">
+                    <option value="en">EN</option>
+                    <option value="es">ES</option>
+                </select>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="container" id="main-content">
+        </main>
+
+    <dialog id="dice-modal">
+        <article>
+            <header>
+                <a href="#close" aria-label="Close" class="close" id="close-modal"></a>
+                <p><strong id="txt-roll-title">Roll</strong></p>
+            </header>
+            <form id="roll-form">
+                <label id="txt-label-trait">Trait</label>
+                <select name="trait" id="modal-trait-select"></select>
+
+                <label id="txt-label-diff">Difficulty</label>
+                <select name="difficulty" id="modal-diff-select"></select>
+
+                <label>
+                    <input type="checkbox" name="useConcept" checked>
+                    <span id="txt-check-concept">Apply Concept</span>
+                </label>
+                <label>
+                    <input type="checkbox" name="usePerk">
+                    <span id="txt-check-perk">Use Perk</span>
+                </label>
+                <button type="submit" id="txt-btn-roll">Roll</button>
+            </form>
+            <div id="roll-output" class="hidden">
+                <hr>
+                <div class="dice-result" id="dice-values"></div>
+                <p id="roll-message" style="text-align: center; font-weight: bold;"></p>
+                <div id="roll-actions" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+            </div>
+        </article>
+    </dialog>
+
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>
