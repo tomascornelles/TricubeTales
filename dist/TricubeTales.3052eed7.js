@@ -719,78 +719,38 @@ var _storeJs = require("./store.js");
 let currentLang = 'en';
 let character = null;
 let isCreating = false;
-// Pre-bind elements to avoid repeated lookups
+let isEditingSheet = false;
 const main = document.getElementById('main-content');
 const modal = document.getElementById('dice-modal');
-/**
- * Robust render function with error checking
- */ function render() {
-    try {
-        if (!main) throw new Error("Main container not found");
-        const t = (0, _i18NJs.translations)[currentLang];
-        const chars = (0, _storeJs.Store).getAll();
-        if (isCreating) renderCreator(t);
-        else if (!character) renderList(chars, t);
-        else renderDashboard(t);
-        document.getElementById('txt-title').innerText = t.title;
-    } catch (err) {
-        console.error("Render error:", err);
-    }
-}
-function renderCreator(t) {
-    const traitOptions = Object.entries(t.traits).map(([k, v])=>`<option value="${k}">${v}</option>`).join('');
-    main.innerHTML = `
-    <article>
-    <h2>${t.newCharTitle}</h2>
-    <form id="char-form">
-    <label>${t.trait}</label>
-    <select name="trait">${traitOptions}</select>
-    <label>${t.concept}</label>
-    <input name="concept" placeholder="${t.phConcept}" required>
-    <label>${t.quirk}</label>
-    <input name="quirk" placeholder="${t.phQuirk}" required>
-    <label>${t.perk}</label>
-    <input name="perk" placeholder="${t.phPerk}" required>
-    <div class="grid">
-    <button type="submit">${t.save}</button>
-    <button type="button" class="secondary outline" id="btn-cancel">${t.cancel}</button>
-    </div>
-    </form>
-    </article>`;
-    document.getElementById('char-form').onsubmit = (e)=>{
-        e.preventDefault();
-        const fd = new FormData(e.target);
-        character = (0, _storeJs.Store).addChar({
-            ...Object.fromEntries(fd),
-            karma: 3,
-            resolve: 3
-        });
-        isCreating = false;
-        render();
-    };
-    document.getElementById('btn-cancel').onclick = ()=>{
-        isCreating = false;
-        render();
-    };
+/** --- RENDERING LOGIC --- **/ function render() {
+    if (!main) return;
+    const t = (0, _i18NJs.translations)[currentLang];
+    const chars = (0, _storeJs.Store).getAll();
+    if (isCreating) renderCreator(t);
+    else if (!character) renderList(chars, t);
+    else isEditingSheet ? renderEditView(t) : renderReadView(t);
+    document.getElementById('txt-title').innerText = t.title;
 }
 function renderList(chars, t) {
     const listHtml = chars.map((c)=>`
-    <li>
-    <div style="display:flex; justify-content: space-between; align-items:center">
-    <a href="#" class="char-link" data-id="${c.id}"><strong>${c.concept}</strong> <small>(${t.traits[c.trait] || c.trait})</small></a>
-    <button class="outline secondary" data-del="${c.id}" style="width:auto; padding:2px 10px; margin:0">\u{2715}</button>
-    </div>
-    </li>`).join('');
+        <article style="padding: 1rem; margin-bottom: 1rem;">
+            <div style="display:flex; justify-content: space-between; align-items:center">
+                <a href="#" class="char-link" data-id="${c.id}">
+                    <h4 style="margin:0">${c.name}</h4>
+                    <small>${c.concept} (${t.traits[c.trait]})</small>
+                </a>
+                <button class="outline secondary" data-del="${c.id}" style="width:auto; padding:2px 10px; margin:0">\u{2715}</button>
+            </div>
+        </article>`).join('');
     main.innerHTML = `
-    <article>
-    <h2>${t.loadChar}</h2>
-    <ul style="list-style:none; padding:0">${listHtml || `<li>${t.noChars}</li>`}</ul>
-    <footer><button id="btn-to-creator" class="contrast">${t.newCharTitle}</button></footer>
-    </article>`;
+        <section>
+            <h2>${t.loadChar}</h2>
+            ${listHtml || `<p>${t.noChars}</p>`}
+            <button id="btn-to-creator" class="contrast" style="width:100%">${t.newCharTitle}</button>
+        </section>`;
     main.querySelectorAll('.char-link').forEach((a)=>a.onclick = (e)=>{
             e.preventDefault();
-            const id = e.currentTarget.dataset.id;
-            character = chars.find((c)=>c.id == id);
+            character = chars.find((c)=>c.id == e.currentTarget.dataset.id);
             render();
         });
     main.querySelectorAll('[data-del]').forEach((b)=>b.onclick = (e)=>{
@@ -802,40 +762,122 @@ function renderList(chars, t) {
         render();
     };
 }
-function renderDashboard(t) {
+function renderCreator(t) {
+    const traitOpts = Object.entries(t.traits).map(([k, v])=>`<option value="${k}">${v}</option>`).join('');
     main.innerHTML = `
-    <article>
-    <header style="display:flex; justify-content:space-between; align-items:center">
-    <div>
-    <h3 style="margin:0">${character.concept}</h3>
-    <small>${t.traits[character.trait].toUpperCase()} | ${character.perk} | ${character.quirk}</small>
-    </div>
-    <button class="outline" id="btn-back" style="width:auto; margin:0">${t.back}</button>
-    </header>
-    <div class="grid-stats" style="margin-top:1rem">
-    <div>${t.karma}: <strong>${character.karma}</strong></div>
-    <div>${t.resolve}: <strong>${character.resolve}</strong></div>
-    </div>
-    <footer><button id="btn-open-roll">${t.rollBtn}</button></footer>
-    </article>`;
+        <article>
+            <h2>${t.newCharTitle}</h2>
+            <form id="char-form">
+                <label>${t.name} <input name="name" placeholder="${t.phName}" required></label>
+                <label>${t.trait} <select name="trait">${traitOpts}</select></label>
+                <label>${t.concept} <input name="concept" placeholder="${t.phConcept}" required></label>
+                <label>${t.perk} <input name="perk" placeholder="${t.phPerk}" required></label>
+                <label>${t.quirk} <input name="quirk" placeholder="${t.phQuirk}" required></label>
+                <div class="grid"><button type="submit">${t.save}</button><button type="button" class="secondary outline" id="btn-cancel">${t.cancel}</button></div>
+            </form>
+        </article>`;
+    document.getElementById('char-form').onsubmit = (e)=>{
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        character = (0, _storeJs.Store).addChar({
+            ...Object.fromEntries(fd),
+            karma: 3,
+            resolve: 3,
+            id: Date.now()
+        });
+        isCreating = false;
+        render();
+    };
+    document.getElementById('btn-cancel').onclick = ()=>{
+        isCreating = false;
+        render();
+    };
+}
+function renderReadView(t) {
+    main.innerHTML = `
+        <article>
+            <header style="display:flex; justify-content:space-between; align-items:start;">
+                <div>
+                    <h2 style="margin:0">${character.name}</h2>
+                    <p style="margin:0; opacity:0.8">${character.concept}</small>
+                    <p style="margin:0"><small>${t.traits[character.trait].toUpperCase()} | P: ${character.perk} | Q: ${character.quirk}</small></p>
+                </div>
+                <div style="display:flex; gap:0.5rem">
+                    <button class="outline" id="btn-edit-mode" style="width:auto; margin:0">\u{270F}\u{FE0F}</button>
+                    <button class="outline" id="btn-back" style="width:auto; margin:0">${t.back}</button>
+                </div>
+            </header>
+            <div class="grid-stats" style="margin: 1.5rem 0">
+                <div class="stat-box">${t.karma}: <strong style="font-size:1.5rem">${character.karma}</strong></div>
+                <div class="stat-box">${t.resolve}: <strong style="font-size:1.5rem">${character.resolve}</strong></div>
+            </div>
+            <footer><button id="btn-open-roll" style="width:100%">${t.rollBtn}</button></footer>
+        </article>`;
+    document.getElementById('btn-edit-mode').onclick = ()=>{
+        isEditingSheet = true;
+        render();
+    };
     document.getElementById('btn-back').onclick = ()=>{
         character = null;
         render();
     };
     document.getElementById('btn-open-roll').onclick = ()=>openRollModal(t);
 }
-function openRollModal(t) {
+function renderEditView(t) {
+    const traitOpts = Object.entries(t.traits).map(([k, v])=>`<option value="${k}" ${character.trait === k ? 'selected' : ''}>${v}</option>`).join('');
+    main.innerHTML = `
+        <article>
+            <form id="edit-form">
+                <h3>${t.edit}</h3>
+                <label>${t.name} <input name="name" value="${character.name}" required></label>
+                <div class="grid">
+                    <label>${t.trait} <select name="trait">${traitOpts}</select></label>
+                    <label>${t.concept} <input name="concept" value="${character.concept}" required></label>
+                </div>
+                <div class="grid">
+                    <label>${t.perk} <input name="perk" value="${character.perk}"></label>
+                    <label>${t.quirk} <input name="quirk" value="${character.quirk}"></label>
+                </div>
+                <div class="grid">
+                    <label>${t.karma} <input type="number" name="karma" value="${character.karma}"></label>
+                    <label>${t.resolve} <input type="number" name="resolve" value="${character.resolve}"></label>
+                </div>
+                <div class="grid">
+                    <button type="submit">${t.update}</button>
+                    <button type="button" class="secondary outline" id="btn-cancel-edit">${t.cancel}</button>
+                </div>
+            </form>
+        </article>`;
+    document.getElementById('edit-form').onsubmit = (e)=>{
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const updated = Object.fromEntries(fd);
+        character = {
+            ...character,
+            ...updated,
+            karma: parseInt(updated.karma),
+            resolve: parseInt(updated.resolve)
+        };
+        updateStore();
+        isEditingSheet = false;
+        render();
+    };
+    document.getElementById('btn-cancel-edit').onclick = ()=>{
+        isEditingSheet = false;
+        render();
+    };
+}
+/** --- ROLL LOGIC --- **/ function openRollModal(t) {
     document.getElementById('txt-roll-title').innerText = t.rollBtn;
     document.getElementById('txt-label-trait').innerText = t.trait;
-    document.getElementById('txt-label-diff').innerText = t.trait; // label
-    document.getElementById('txt-check-concept').innerText = t.checkConcept || "Concept";
+    document.getElementById('txt-label-diff').innerText = t.diffs[5].split(' ')[0];
+    document.getElementById('txt-check-concept').innerText = t.checkConcept;
     document.getElementById('txt-check-perk').innerText = t.checkPerk;
     document.getElementById('txt-btn-roll').innerText = t.rollBtn;
-    document.getElementById('modal-trait-select').innerHTML = Object.entries(t.traits).map(([k, v])=>`<option value="${k}">${v}</option>`).join('');
+    document.getElementById('modal-trait-select').innerHTML = Object.entries(t.traits).map(([k, v])=>`<option value="${k}" ${character.trait === k ? 'selected' : ''}>${v}</option>`).join('');
     document.getElementById('modal-diff-select').innerHTML = Object.entries(t.diffs).map(([k, v])=>`<option value="${k}">${v}</option>`).join('');
     modal.open = true;
 }
-// Roll logic (unchanged logic but wrapped for safety)
 document.getElementById('roll-form').onsubmit = (e)=>{
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -844,96 +886,96 @@ document.getElementById('roll-form').onsubmit = (e)=>{
     const usePerk = fd.get('usePerk') === 'on';
     let dice = fd.get('trait') === character.trait.toLowerCase() ? 3 : 2;
     if (fd.get('useConcept') !== 'on') dice--;
-    dice = Math.max(1, dice);
     const rolls = Array.from({
-        length: dice
+        length: Math.max(1, dice)
     }, ()=>Math.floor(Math.random() * 6) + 1);
+    const successCount = rolls.filter((v)=>v >= difficulty).length;
     const canQuirk = rolls.some((v)=>v === difficulty - 1) && character.karma > 0;
     document.getElementById('roll-output').classList.remove('hidden');
     document.getElementById('dice-values').innerText = rolls.join(' ');
     const act = document.getElementById('roll-actions');
     act.innerHTML = '';
-    const successes = rolls.filter((v)=>v >= difficulty).length;
-    const isCritFail = rolls.every((v)=>v === 1);
-    document.getElementById('roll-message').innerText = successes > 0 ? t.success : t.failure;
+    document.getElementById('roll-message').innerText = successCount > 0 ? successCount >= 2 ? t.exceptional : t.success : t.failure;
     if (usePerk) {
-        if (successes > 0) {
-            addBtn(t.gainKarma, ()=>{
+        if (successCount > 0) {
+            addActBtn(t.gainKarma, ()=>{
                 character.karma++;
                 finish();
             });
-            addBtn(t.gainResolve, ()=>{
+            addActBtn(t.gainResolve, ()=>{
                 character.resolve++;
                 finish();
             });
         } else character.karma++;
     }
-    if (canQuirk) addBtn(t.useQuirk, ()=>{
+    if (canQuirk) addActBtn(t.useQuirk, ()=>{
         character.karma--;
         finish();
     }, "secondary");
-    if (successes === 0) {
-        const loss = isCritFail ? 2 : 1;
-        addBtn(`${t.loseRes} (${loss})`, ()=>{
+    if (successCount === 0) {
+        const loss = rolls.every((v)=>v === 1) ? 2 : 1;
+        addActBtn(`${t.loseRes} (${loss})`, ()=>{
             character.resolve -= loss;
             finish();
         });
     }
-    if (act.innerHTML === '') addBtn("OK", finish);
+    if (act.innerHTML === '') addActBtn("OK", finish);
 };
-function addBtn(txt, cb, cls = "") {
+function addActBtn(txt, cb, cls = "") {
     const b = document.createElement('button');
     b.innerText = txt;
     if (cls) b.className = cls;
     b.onclick = cb;
     document.getElementById('roll-actions').appendChild(b);
 }
-function finish() {
+const updateStore = ()=>{
     const all = (0, _storeJs.Store).getAll();
     const i = all.findIndex((c)=>c.id === character.id);
-    if (i !== -1) all[i] = character;
-    (0, _storeJs.Store).saveAll(all);
+    if (i !== -1) {
+        all[i] = character;
+        (0, _storeJs.Store).saveAll(all);
+    }
+};
+const finish = ()=>{
+    updateStore();
     render();
     modal.open = false;
     document.getElementById('roll-output').classList.add('hidden');
-}
-// Initializing
+};
 document.getElementById('lang-selector').onchange = (e)=>{
     currentLang = e.target.value;
     render();
 };
 document.getElementById('close-modal').onclick = ()=>modal.open = false;
-// CRITICAL: Initialize on load
-document.addEventListener('DOMContentLoaded', ()=>{
-    console.log("App loaded");
-    render();
-});
+document.addEventListener('DOMContentLoaded', render);
 
 },{"./i18n.js":"lQCzu","./store.js":"9fXba"}],"lQCzu":[function(require,module,exports,__globalThis) {
-/**
- * All UI strings including placeholders and dynamic labels
- */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "translations", ()=>translations);
 const translations = {
     en: {
         title: "Tricube Tales Solo",
         loadChar: "Your Characters",
-        noChars: "No characters saved yet.",
+        noChars: "No characters found.",
         newCharTitle: "New Character",
         save: "Create Character",
+        update: "Save Changes",
         cancel: "Cancel",
         back: "Menu",
+        edit: "Edit Character",
+        name: "Name",
+        concept: "Concept",
+        trait: "Trait",
+        perk: "Perk",
+        quirk: "Quirk",
         karma: "Karma",
         resolve: "Resolve",
         rollBtn: "Roll Dice",
-        trait: "Trait",
-        concept: "Concept",
-        quirk: "Quirk",
-        perk: "Perk",
-        phConcept: "e.g. Bold Starfighter Pilot",
-        phQuirk: "e.g. Afraid of Spiders",
-        phPerk: "e.g. Expert Mechanic",
+        phName: "Character Name",
+        phConcept: "e.g. Space Bounty Hunter",
+        phPerk: "e.g. Gadget Expert",
+        phQuirk: "e.g. Wanted by the Empire",
         traits: {
             brawny: "Brawny",
             agile: "Agile",
@@ -949,12 +991,6 @@ const translations = {
         exceptional: "Exceptional Success!",
         critical: "Critical Failure!",
         checkConcept: "Apply Concept (+1 die)",
-        checkPerk: "Use Perk (-1 Difficulty)",
-        payKarma: "Pay 1 Karma (Perk Success)",
-        gainKarma: "Gain +1 Karma (Quirk)",
-        loseRes: "Lose Resolve",
-        phQuirk: "e.g. Afraid of heights",
-        phPerk: "e.g. Lucky Coin",
         checkPerk: "Use Perk (Risk for Karma/Res)",
         useQuirk: "Use Quirk (-1 Diff, -1 Karma)",
         gainKarma: "Gain +1 Karma",
@@ -967,18 +1003,22 @@ const translations = {
         noChars: "No hay personajes guardados.",
         newCharTitle: "Nuevo Personaje",
         save: "Crear Personaje",
+        update: "Guardar Cambios",
         cancel: "Cancelar",
         back: "Men\xfa",
+        edit: "Editar Personaje",
+        name: "Nombre",
+        concept: "Concepto",
+        trait: "Rasgo",
+        perk: "Ventaja",
+        quirk: "Defecto",
         karma: "Karma",
         resolve: "Resoluci\xf3n",
         rollBtn: "Lanzar Dados",
-        trait: "Rasgo",
-        concept: "Concepto",
-        quirk: "Defecto",
-        perk: "Ventaja",
-        phConcept: "ej. Piloto audaz",
-        phQuirk: "ej. Miedo a las alturas",
-        phPerk: "ej. Mec\xe1nico experto",
+        phName: "Nombre del personaje",
+        phConcept: "ej. Cazarrecompensas Espacial",
+        phPerk: "ej. Experto en Gadgets",
+        phQuirk: "ej. Buscado por el Imperio",
         traits: {
             brawny: "Fuerte",
             agile: "\xc1gil",
@@ -994,14 +1034,8 @@ const translations = {
         exceptional: "\xa1\xc9xito Excepcional!",
         critical: "\xa1Fallo Cr\xedtico!",
         checkConcept: "Aplicar Concepto (+1 dado)",
-        checkPerk: "Usar Ventaja (-1 Dificultad)",
-        payKarma: "Pagar 1 Karma (\xc9xito con Ventaja)",
-        gainKarma: "Ganar +1 Karma (Defecto)",
-        loseRes: "Perder Resoluci\xf3n",
-        phQuirk: "ej. Miedo a las alturas",
-        phPerk: "ej. Moneda de la suerte",
         checkPerk: "Usar Ventaja (Riesgo por Karma/Res)",
-        useQuirk: "Usar Defecto (-1 Dificultad, -1 Karma)",
+        useQuirk: "Usar Defecto (-1 Dif, -1 Karma)",
         gainKarma: "Ganar +1 Karma",
         gainResolve: "Ganar +1 Resoluci\xf3n",
         loseRes: "Perder Resoluci\xf3n"
