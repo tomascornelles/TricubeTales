@@ -1,10 +1,15 @@
-/* Basic Service Worker for Offline Mode */
-const CACHE_NAME = 'tricube-v1';
+const CACHE_NAME = 'tt-v1';
+const ASSETS = [
+  '/',
+  '/index.html',
+  '/js/app.js',
+  'https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css'
+];
 
-self.addEventListener('install', (e) => self.skipWaiting());
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+});
 
-self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request).then((resp) => resp || fetch(event.request))
-    );
+self.addEventListener('fetch', (e) => {
+  e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
 });
