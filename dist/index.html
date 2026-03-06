@@ -1,48 +1,120 @@
 <!DOCTYPE html><html lang="en" data-theme="light"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tricube Tales Solo</title>
+    <title>Tricube Tales Companion</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
-    <link rel="manifest" href="/manifest.webmanifest">
-    <style>:root {
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&amp;family=Orbitron:wght@400;700&amp;family=Special+Elite&amp;family=Roboto+Mono&amp;display=swap" rel="stylesheet">
+<style>:root {
   --primary: #10ad91;
+  transition: all .3s;
 }
 
-.hidden {
-  display: none;
+[data-theme="light"] {
+  --color: #333;
+  background-color: #fff;
 }
 
-.dice-result {
-  text-align: center;
-  color: var(--primary);
-  margin: 1rem 0;
-  font-size: 2.5rem;
-  font-weight: bold;
+[data-theme="dark"] {
+  --color: #bbc6ce;
+  background-color: #11191f;
 }
 
-.grid-stats {
-  text-align: center;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  display: grid;
+[data-theme="fantasy"] {
+  --font-family: "MedievalSharp", cursive;
+  --card-background-color: #fdf5e6;
+  --primary: #8b4513;
+  --color: #5d4037;
+  background-color: #f4e4bc;
+}
+
+[data-theme="scifi"] {
+  --font-family: "Orbitron", sans-serif;
+  --card-background-color: #161b22;
+  --primary: #00ced1;
+  --color: #c9d1d9;
+  background-color: #0d1117;
+}
+
+[data-theme="cyberpunk"] {
+  --font-family: "Roboto Mono", monospace;
+  --card-background-color: #0a0a0a;
+  --primary: #f0f;
+  --color: #0ff;
+  --border-color: #f0f;
+  background-color: #000;
+}
+
+[data-theme="pulp"] {
+  --font-family: "Special Elite", cursive;
+  --card-background-color: wheat;
+  --primary: #8b0000;
+  --color: #3e2723;
+  background-color: tan;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--background-color);
+  color: var(--color);
+  min-height: 100vh;
+  margin: 0;
+}
+
+article {
+  border: 1px solid #80808033;
+  background-color: var(--card-background-color) !important;
+}
+
+[data-theme="cyberpunk"] button {
+  border: 2px solid var(--primary);
+  text-transform: uppercase;
+  border-radius: 0;
+}
+
+textarea {
+  border: 1px solid var(--primary);
+  width: 100%;
+  color: var(--color);
+  background-color: #0000000d;
+  font-family: inherit;
+}
+
+[data-theme="dark"], [data-theme="scifi"], [data-theme="cyberpunk"] textarea {
+  background-color: #ffffff0d;
+}
+
+[data-theme] .perk-header {
+  color: #2e7d32;
+}
+
+[data-theme] .quirk-header {
+  color: #c62828;
+}
+
+.affliction-item {
+  background: #00000008;
+  border-radius: 4px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  display: flex;
+}
+
+[data-theme="dark"] .affliction-item, [data-theme="cyberpunk"] .affliction-item {
+  background: #ffffff0d;
 }
 </style>
 </head>
 <body>
     <nav class="container">
-        <ul><li><strong id="txt-title">Tricube Tales</strong></li></ul>
+        <ul><li id="nav-title"><strong>Tricube Tales</strong></li></ul>
         <ul>
-            <li>
-                <select id="lang-selector" style="width: auto; margin-bottom: 0">
-                    <option value="en">EN</option>
-                    <option value="es">ES</option>
-                </select>
-            </li>
+            <li><select id="theme-selector" style="width: auto; margin: 0"></select></li>
+            <li><select id="lang-selector" style="width: auto; margin: 0"></select></li>
         </ul>
     </nav>
 
-    <main class="container" id="main-content">
-        </main>
+    <main class="container" id="main-content"></main>
 
     <dialog id="dice-modal">
         <article>
@@ -51,30 +123,36 @@
                 <p><strong id="txt-roll-title">Roll</strong></p>
             </header>
             <form id="roll-form">
-                <label id="txt-label-trait">Trait</label>
-                <select name="trait" id="modal-trait-select"></select>
-
-                <label id="txt-label-diff">Difficulty</label>
-                <select name="difficulty" id="modal-diff-select"></select>
-
-                <label>
-                    <input type="checkbox" name="useConcept" checked="">
-                    <span id="txt-check-concept">Apply Concept</span>
-                </label>
-                <label>
-                    <input type="checkbox" name="usePerk">
-                    <span id="txt-check-perk">Use Perk</span>
-                </label>
+                <div class="grid">
+                    <label id="txt-label-trait">Trait <select name="trait" id="modal-trait-select"></select></label>
+                    <label id="txt-label-diff">Difficulty <select name="difficulty" id="modal-diff-select"></select></label>
+                </div>
+                <label><input type="checkbox" name="useConcept" checked=""> <span id="txt-check-concept">Concept</span></label>
+                <label><input type="checkbox" name="usePerk"> <span id="txt-check-perk">Perk</span></label>
                 <button type="submit" id="txt-btn-roll">Roll</button>
             </form>
             <div id="roll-output" class="hidden">
-                <hr>
-                <div class="dice-result" id="dice-values"></div>
+                <hr><div class="dice-result" id="dice-values"></div>
                 <p id="roll-message" style="text-align: center; font-weight: bold"></p>
                 <div id="roll-actions" style="flex-direction: column; gap: .5rem; display: flex"></div>
             </div>
         </article>
     </dialog>
+
+    <dialog id="affliction-modal">
+    <article>
+        <header>
+            <p><strong id="txt-affliction-title">New Affliction</strong></p>
+        </header>
+        <form id="affliction-form">
+            <label id="txt-label-affliction">Description</label>
+            <input name="afflictionName" id="affliction-input" required="">
+            <footer style="justify-content: flex-end; gap: .5rem; display: flex">
+                <button type="submit" id="txt-btn-add-aff">Add</button>
+            </footer>
+        </form>
+    </article>
+</dialog>
 
     <script type="module" src="/TricubeTales.3052eed7.js"></script>
 

@@ -3,31 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tricube Tales Solo</title>
+    <title>Tricube Tales Companion</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
-    <link rel="manifest" href="./manifest.json">
-    <style>
-        :root { --primary: #10ad91; }
-        .hidden { display: none; }
-        .dice-result { font-size: 2.5rem; font-weight: bold; text-align: center; margin: 1rem 0; color: var(--primary); }
-        .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; text-align: center; }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Orbitron:wght@400;700&family=Special+Elite&family=Roboto+Mono&display=swap" rel="stylesheet">
+<style>
+    :root { --primary: #10ad91; transition: all 0.3s ease; }
+    
+    /* Variables de Tema */
+    [data-theme="light"] { background-color: #ffffff; --color: #333; }
+    [data-theme="dark"] { background-color: #11191f; --color: #bbc6ce; }
+    
+    [data-theme="fantasy"] { 
+        --font-family: 'MedievalSharp', cursive; 
+        background-color: #f4e4bc; 
+        --card-background-color: #fdf5e6; 
+        --primary: #8b4513; 
+        --color: #5d4037;
+    }
+    
+    [data-theme="scifi"] { 
+        --font-family: 'Orbitron', sans-serif; 
+        background-color: #0d1117; 
+        --card-background-color: #161b22; 
+        --primary: #00ced1; 
+        --color: #c9d1d9;
+    }
+    
+    [data-theme="cyberpunk"] { 
+        --font-family: 'Roboto Mono', monospace; 
+        background-color: #000000; 
+        --card-background-color: #0a0a0a; 
+        --primary: #f0f; 
+        --color: #0ff;
+        --border-color: #f0f;
+    }
+    
+    [data-theme="pulp"] { 
+        --font-family: 'Special Elite', cursive; 
+        background-color: #d2b48c; 
+        --card-background-color: #f5deb3; 
+        --primary: #8b0000; 
+        --color: #3e2723;
+    }
+
+    body { 
+        font-family: var(--font-family); 
+        background-color: var(--background-color); 
+        color: var(--color);
+        min-height: 100vh;
+        margin: 0;
+    }
+
+    /* Ajuste para que las tarjetas de PicoCSS sigan el tema */
+    article {
+        background-color: var(--card-background-color) !important;
+        border: 1px solid rgba(128, 128, 128, 0.2);
+    }
+
+    /* Estilo especial para botones Cyberpunk */
+    [data-theme="cyberpunk"] button {
+        border-radius: 0;
+        border: 2px solid var(--primary);
+        text-transform: uppercase;
+    }
+    textarea {
+    width: 100%;
+    font-family: inherit;
+    background-color: rgba(0,0,0,0.05);
+    border: 1px solid var(--primary);
+    color: var(--color);
+}
+[data-theme="dark"], [data-theme="scifi"], [data-theme="cyberpunk"] textarea {
+    background-color: rgba(255,255,255,0.05);
+}
+    /* Colores semánticos para listas */
+[data-theme] .perk-header { color: #2e7d32; }
+[data-theme] .quirk-header { color: #c62828; }
+
+.affliction-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.03);
+    border-radius: 4px;
+}
+
+/* En modo oscuro o cyberpunk, ajustamos el contraste de los fondos de item */
+[data-theme="dark"] .affliction-item,
+[data-theme="cyberpunk"] .affliction-item {
+    background: rgba(255,255,255,0.05);
+}
+</style>
 </head>
 <body>
     <nav class="container">
-        <ul><li><strong id="txt-title">Tricube Tales</strong></li></ul>
+        <ul><li id="nav-title"><strong>Tricube Tales</strong></li></ul>
         <ul>
-            <li>
-                <select id="lang-selector" style="margin-bottom: 0; width: auto;">
-                    <option value="en">EN</option>
-                    <option value="es">ES</option>
-                </select>
-            </li>
+            <li><select id="theme-selector" style="width: auto; margin:0"></select></li>
+            <li><select id="lang-selector" style="width: auto; margin:0"></select></li>
         </ul>
     </nav>
 
-    <main class="container" id="main-content">
-        </main>
+    <main class="container" id="main-content"></main>
 
     <dialog id="dice-modal">
         <article>
@@ -36,30 +114,36 @@
                 <p><strong id="txt-roll-title">Roll</strong></p>
             </header>
             <form id="roll-form">
-                <label id="txt-label-trait">Trait</label>
-                <select name="trait" id="modal-trait-select"></select>
-
-                <label id="txt-label-diff">Difficulty</label>
-                <select name="difficulty" id="modal-diff-select"></select>
-
-                <label>
-                    <input type="checkbox" name="useConcept" checked>
-                    <span id="txt-check-concept">Apply Concept</span>
-                </label>
-                <label>
-                    <input type="checkbox" name="usePerk">
-                    <span id="txt-check-perk">Use Perk</span>
-                </label>
+                <div class="grid">
+                    <label id="txt-label-trait">Trait <select name="trait" id="modal-trait-select"></select></label>
+                    <label id="txt-label-diff">Difficulty <select name="difficulty" id="modal-diff-select"></select></label>
+                </div>
+                <label><input type="checkbox" name="useConcept" checked> <span id="txt-check-concept">Concept</span></label>
+                <label><input type="checkbox" name="usePerk"> <span id="txt-check-perk">Perk</span></label>
                 <button type="submit" id="txt-btn-roll">Roll</button>
             </form>
             <div id="roll-output" class="hidden">
-                <hr>
-                <div class="dice-result" id="dice-values"></div>
+                <hr><div class="dice-result" id="dice-values"></div>
                 <p id="roll-message" style="text-align: center; font-weight: bold;"></p>
                 <div id="roll-actions" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
             </div>
         </article>
     </dialog>
+
+    <dialog id="affliction-modal">
+    <article>
+        <header>
+            <p><strong id="txt-affliction-title">New Affliction</strong></p>
+        </header>
+        <form id="affliction-form">
+            <label id="txt-label-affliction">Description</label>
+            <input name="afflictionName" id="affliction-input" required>
+            <footer style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" id="txt-btn-add-aff">Add</button>
+            </footer>
+        </form>
+    </article>
+</dialog>
 
     <script type="module" src="./js/app.js"></script>
 </body>
