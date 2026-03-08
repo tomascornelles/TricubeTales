@@ -69,40 +69,92 @@ function renderCreator(t) {
 }
 
 function renderDashboard(chars, t) {
-    const charOptions = chars.map(c => `<option value="${c.id}" ${c.id===character.id?'selected':''}>${c.name}</option>`).join('');
-    main.innerHTML = `
-        <div class="dashboard-grid">
-            <header class="full-width" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
-                <select id="quick-char-select" style="width: auto; margin:0">${charOptions}</select>
-                <div style="display:flex; gap:0.5rem"><button class="outline" id="btn-edit-mode">✏️</button><button class="outline" id="btn-back-menu">✕</button></div>
-            </header>
-            <article>
-                <hgroup><h2>${character.name}</h2><p>${character.concept} | ${t.traits[character.trait]}</p></hgroup>
-                <div class="grid">
-                    <div class="stat-box"><small>${t.karma}</small><div style="display:flex; gap:8px; align-items:center; justify-content:center">
-                        <button class="outline btn-karma" onclick="window.changeStat('karma',-1)">-</button><strong>${character.karma}</strong><button class="outline btn-karma" onclick="window.changeStat('karma',1)">+</button>
-                    </div></div>
-                    <div class="stat-box"><small>${t.resolve}</small><div style="display:flex; gap:8px; align-items:center; justify-content:center">
-                        <button class="outline btn-resolve" onclick="window.changeStat('resolve',-1)">-</button><strong>${character.resolve}</strong><button class="outline btn-resolve" onclick="window.changeStat('resolve',1)">+</button>
-                    </div></div>
+    const tSolo = translations[config.lang].solo || { types: {}, suits: {} };
+    const history = character.sceneHistory || [];
+    const current = character.currentCard;
+
+    // Construcción del HTML de las Cartas (Pág 2 PDF)
+    const soloHTML = `
+    <article class="solo-container" style="border: 2px dashed var(--primary); padding: 0.8rem; margin-top: 1rem;">
+        <h6 style="margin-bottom: 0.5rem;">🃏 ${tSolo.sceneManager || 'Gestión de Escenas'}</h6>
+        
+        ${current ? `
+            <div style="text-align:center; padding:1rem; background:rgba(0,0,0,0.05); border-radius:8px; border: 1px solid var(--primary);">
+                <h2 style="margin:0; color:${['H','D'].includes(current.s) ? '#c62828' : 'inherit'}">
+                    ${current.v}${window.getSuitIcon(current.s)}
+                </h2>
+                <p style="margin: 0.5rem 0;"><small>${tSolo.types[current.v] || 'Desafío'}</small></p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button onclick="window.resolveScene(true)" style="margin:0">✅ ${tSolo.win || 'Éxito'}</button>
+                    <button class="secondary" onclick="window.resolveScene(false)" style="margin:0">❌ ${tSolo.lose || 'Fallo'}</button>
                 </div>
-                <button id="btn-open-roll" style="margin-top:1.5rem; width:100%">${t.rollBtn}</button>
-            </article>
-            <div>
-                <article style="border-left:4px solid #2e7d32; margin-bottom:1rem"><h5>⭐ ${t.perk}s</h5><ul style="font-size:0.9rem">${character.perks.map(p=>`<li>${p}</li>`).join('')||'<li>-</li>'}</ul></article>
-                <article style="border-left:4px solid #c62828; margin-bottom:1rem"><h5>⚠️ ${t.quirk}s</h5><ul style="font-size:0.9rem">${character.quirks.map(q=>`<li>${q}</li>`).join('')||'<li>-</li>'}</ul></article>
-                <article style="border-left:4px solid var(--primary)"><h5>🩹 ${t.afflictions}</h5>
-                    ${character.afflictions.map((a,i)=>`<div class="affliction-item"><span>${a}</span><div style="display:flex; gap:4px">
-                        <button class="outline" onclick="window.promoteAffliction(${i})" style="padding:2px 8px; margin:0">+</button>
-                        <button class="outline secondary" onclick="window.removeAffliction(${i})" style="padding:2px 8px; margin:0">✕</button>
-                    </div></div>`).join('') || '<p>-</p>'}
-                </article>
             </div>
-        </div>`;
-    document.getElementById('quick-char-select').onchange = (e) => { character = chars.find(c => c.id == e.target.value); render(); };
-    document.getElementById('btn-edit-mode').onclick = () => { isEditingSheet = true; render(); };
-    document.getElementById('btn-back-menu').onclick = () => { character = null; render(); };
-    document.getElementById('btn-open-roll').onclick = () => openRollModal(t);
+        ` : `
+            <button class="contrast" onclick="window.drawSceneCard()" style="width:100%">${tSolo.drawCard || 'Sacar Carta de Escena'}</button>
+        `}
+
+        <div style="margin-top:0.8rem; display:flex; gap:5px; flex-wrap:wrap; justify-content: center;">
+            ${history.map(c => `
+                <span style="opacity:${c.success ? 1 : 0.3}; font-size: 1.2rem;" title="${c.v}${c.s}">
+                    ${c.v}${window.getSuitIcon(c.s)}
+                </span>
+            `).join('')}
+        </div>
+    </article>
+    `;
+
+    // Renderizado principal del Dashboard
+    main.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+        <button class="outline" onclick="character=null;render()" style="padding:0.2rem 0.5rem; margin:0">← ${t.back}</button>
+        <button class="outline" onclick="isEditingSheet=true;render()" style="padding:0.2rem 0.5rem; margin:0">✏️ ${t.edit}</button>
+    </div>
+    
+    <article>
+        <header>
+            <h4 style="margin:0">${character.name}</h4>
+            <small>${character.concept}</small>
+        </header>
+        
+        <div class="grid">
+            <div style="text-align:center; border:1px solid var(--primary); padding:0.5rem; border-radius:8px">
+                <small>${t.karma}</small>
+                <div style="display:flex; align-items:center; justify-content:center; gap:10px">
+                    <button class="outline" onclick="changeStat('karma',-1)" style="padding:0 0.5rem">-</button>
+                    <strong>${character.karma}</strong>
+                    <button class="outline" onclick="changeStat('karma',1)" style="padding:0 0.5rem">+</button>
+                </div>
+            </div>
+            <div style="text-align:center; border:1px solid var(--primary); padding:0.5rem; border-radius:8px">
+                <small>${t.resolve}</small>
+                <div style="display:flex; align-items:center; justify-content:center; gap:10px">
+                    <button class="outline" onclick="changeStat('resolve',-1)" style="padding:0 0.5rem">-</button>
+                    <strong>${character.resolve}</strong>
+                    <button class="outline" onclick="changeStat('resolve',1)" style="padding:0 0.5rem">+</button>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="openRollModal()" style="margin-top:1rem; width:100%">${t.rollBtn}</button>
+        
+        ${soloHTML} 
+    </article>
+
+    <div class="grid">
+        <article><h6>${t.perk}s</h6><ul>${character.perks.map(p=>`<li>${p}</li>`).join('')}</ul></article>
+        <article><h6>${t.quirk}s</h6><ul>${character.quirks.map(q=>`<li>${q}</li>`).join('')}</ul></article>
+    </div>
+    
+    <article>
+        <h6>${t.afflictions}</h6>
+        <div style="display:flex; flex-wrap:wrap; gap:0.5rem">
+            ${character.afflictions.map((a,i)=>`
+                <mark style="padding:0.2rem 0.5rem; border-radius:4px; display:flex; align-items:center; gap:5px">
+                    ${a} <span style="cursor:pointer; font-weight:bold" onclick="removeAffliction(${i})">×</span>
+                </mark>
+            `).join('')}
+        </div>
+    </article>`;
 }
 
 function renderEditView(t) {
@@ -209,6 +261,129 @@ document.getElementById('roll-form').onsubmit = (e) => {
     }
 
     addBtn("OK", () => { modal.open = false; checkAndPersist(); });
+};
+
+// --- LÓGICA DEL ORÁCULO (Pág. 1 del PDF) ---
+window.rollOracle = () => {
+    const target = parseInt(document.getElementById('oracle-prob').value);
+    const d6 = Math.floor(Math.random() * 6) + 1;
+    const caveatRoll = Math.floor(Math.random() * 6) + 1;
+    
+    const isYes = d6 >= target;
+    const output = document.getElementById('oracle-output');
+    const answer = document.getElementById('oracle-answer');
+    const caveat = document.getElementById('oracle-caveat');
+
+    output.classList.remove('hidden');
+    answer.innerText = isYes ? "SÍ" : "NO";
+    answer.style.color = isYes ? "var(--primary)" : "#c62828";
+
+    // Regla "Adding a Caveat" (Pág 1): 1-2 = Pero..., 5-6 = Y además...
+    if (caveatRoll <= 2) caveat.innerText = "...pero (but)";
+    else if (caveatRoll >= 5) caveat.innerText = "...y además (and)";
+    else caveat.innerText = "";
+};
+
+window.runIntermission = (type) => {
+    if (type === 'relax') {
+        // Relajarse (Pág 2): Recupera Resolve pero 1 en 6 de problema
+        character.resolve = character.maxResolve;
+        const problem = Math.floor(Math.random() * 6) + 1 === 1;
+        alert("Te has relajado: Resolución al máximo." + (problem ? "\n⚠️ ¡Pero algo ha ido mal!" : ""));
+    } else {
+        // Planear (Pág 2): Gana 1 Karma
+        character.karma = Math.min(character.karma + 1, character.maxKarma);
+        alert("Has trazado un plan: +1 Karma.");
+    }
+    checkAndPersist();
+};
+
+window.generateTwist = () => {
+    // Tabla de Giros (Twists) sugerida en el PDF
+    const twists = [
+        "Un nuevo peligro aparece",
+        "Un NPC cambia de actitud",
+        "Algo no es lo que parece",
+        "Aparece una complicación física",
+        "El tiempo se agota",
+        "Un recurso se pierde o rompe"
+    ];
+    alert("GIRO ARGUMENTAL:\n" + twists[Math.floor(Math.random()*twists.length)]);
+};
+
+window.advanceScene = () => {
+    const t = translations[config.lang];
+    // Actualizamos textos del modal de intermedio antes de abrir
+    document.getElementById('txt-intermission-title').innerText = t.intermissionTitle || "Intermission";
+    document.getElementById('txt-relax-desc').innerText = t.relaxDesc || "Recover all Resolve, but roll 1d6: on a 1, a complication occurs.";
+    document.getElementById('txt-plan-desc').innerText = t.planDesc || "Gain +1 Karma while you prepare your next move.";
+    
+    document.getElementById('intermission-modal').showModal();
+};
+
+window.handleIntermission = (type) => {
+    const t = translations[config.lang];
+    if (type === 'relax') {
+        character.resolve = character.maxResolve;
+        // Regla PDF: 1 en d6 es complicación
+        const roll = Math.floor(Math.random() * 6) + 1;
+        if (roll === 1) {
+            alert("⚠️ " + (t.relaxComplication || "Complication! Something went wrong while resting."));
+        } else {
+            alert("✅ " + (t.confirmRelax || "Recovered to Max Resolve."));
+        }
+    } else if (type === 'plan') {
+        character.karma = Math.min(character.karma + 1, character.maxKarma);
+        alert("✅ " + (t.confirmPlan || "Gained +1 Karma."));
+    }
+    
+    // Avanzar contador de escena
+    character.scene = (character.scene || 1) + 1;
+    document.getElementById('intermission-modal').close();
+    
+    // USAMOS EL NOMBRE CORRECTO DE TU ARCHIVO
+    checkAndPersist(); 
+};
+
+const originalAddChar = Store.addChar;
+Store.addChar = (char) => {
+    if (!char.scene) char.scene = 1;
+    return originalAddChar(char);
+};
+
+// --- MOTOR DE CARTAS SOLO (Pág. 2 PDF) ---
+window.getSuitIcon = (s) => {
+    const icons = { 'H': '♥️', 'D': '♦️', 'S': '♠️', 'C': '♣️' };
+    return icons[s] || s;
+};
+
+window.drawSceneCard = () => {
+    const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    const SUITS = ['H', 'D', 'S', 'C'];
+
+    if (!character.deck || character.deck.length === 0) {
+        character.deck = [];
+        SUITS.forEach(s => VALUES.forEach(v => character.deck.push({v, s})));
+    }
+
+    const idx = Math.floor(Math.random() * character.deck.length);
+    const card = character.deck.splice(idx, 1)[0];
+    
+    character.currentCard = card;
+    character.sceneHistory = character.sceneHistory || [];
+
+    // Si es J, Q, K, A (Figuras)
+    if (['J', 'Q', 'K', 'A'].includes(card.v)) {
+        alert("¡EVENTO ESPECIAL!\n" + card.v + window.getSuitIcon(card.s));
+    }
+    
+    checkAndPersist(); // Esto guardará y re-renderizará
+};
+
+window.resolveScene = (success) => {
+    character.sceneHistory.push({ ...character.currentCard, success });
+    character.currentCard = null;
+    checkAndPersist();
 };
 
 document.getElementById('close-modal').onclick = () => modal.open = false;

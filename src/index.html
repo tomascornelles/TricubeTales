@@ -95,6 +95,30 @@
 [data-theme="cyberpunk"] .affliction-item {
     background: rgba(255,255,255,0.05);
 }
+    .solo-tools {
+        background: rgba(16, 173, 145, 0.1);
+        border: 1px dashed var(--primary);
+        padding: 0.5rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+    }
+    .oracle-res {
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-align: center;
+        padding: 0.5rem;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+    .scene-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(0,0,0,0.05);
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
 </style>
 </head>
 <body>
@@ -143,6 +167,45 @@
                 <button type="submit" id="txt-btn-add-aff">Add</button>
             </footer>
         </form>
+    </article>
+</dialog>
+
+<dialog id="oracle-modal">
+    <article>
+        <header>
+            <a href="#close" aria-label="Close" class="close" onclick="this.closest('dialog').close()"></a>
+            <strong id="txt-oracle-title">Oráculo</strong>
+        </header>
+        <label>Probabilidad
+            <select id="oracle-prob">
+                <option value="2">Muy Probable (2+)</option>
+                <option value="3">Probable (3+)</option>
+                <option value="4" selected>Quizás (4+)</option>
+                <option value="5">Improbable (5+)</option>
+                <option value="6">Muy Improbable (6)</option>
+            </select>
+        </label>
+        <button onclick="window.rollOracle()">Preguntar</button>
+        <div id="oracle-output" class="hidden">
+            <div id="oracle-answer" class="oracle-res"></div>
+            <p id="oracle-caveat" style="text-align:center; font-style:italic"></p>
+        </div>
+    </article>
+</dialog>
+
+<dialog id="intermission-modal">
+    <article>
+        <header>
+            <strong id="txt-intermission-title">Intermission</strong>
+        </header>
+        <p id="txt-relax-desc"></p>
+        <button onclick="window.handleIntermission('relax')" class="secondary">☕ Relax</button>
+        <hr>
+        <p id="txt-plan-desc"></p>
+        <button onclick="window.handleIntermission('plan')" class="contrast">📋 Plan</button>
+        <footer>
+            <button class="outline" onclick="this.closest('dialog').close()">Cancel</button>
+        </footer>
     </article>
 </dialog>
 

@@ -809,49 +809,96 @@ function renderCreator(t) {
     };
 }
 function renderDashboard(chars, t) {
-    const charOptions = chars.map((c)=>`<option value="${c.id}" ${c.id === character.id ? 'selected' : ''}>${c.name}</option>`).join('');
-    main.innerHTML = `
-        <div class="dashboard-grid">
-            <header class="full-width" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
-                <select id="quick-char-select" style="width: auto; margin:0">${charOptions}</select>
-                <div style="display:flex; gap:0.5rem"><button class="outline" id="btn-edit-mode">\u{270F}\u{FE0F}</button><button class="outline" id="btn-back-menu">\u{2715}</button></div>
-            </header>
-            <article>
-                <hgroup><h2>${character.name}</h2><p>${character.concept} | ${t.traits[character.trait]}</p></hgroup>
-                <div class="grid">
-                    <div class="stat-box"><small>${t.karma}</small><div style="display:flex; gap:8px; align-items:center; justify-content:center">
-                        <button class="outline btn-karma" onclick="window.changeStat('karma',-1)">-</button><strong>${character.karma}</strong><button class="outline btn-karma" onclick="window.changeStat('karma',1)">+</button>
-                    </div></div>
-                    <div class="stat-box"><small>${t.resolve}</small><div style="display:flex; gap:8px; align-items:center; justify-content:center">
-                        <button class="outline btn-resolve" onclick="window.changeStat('resolve',-1)">-</button><strong>${character.resolve}</strong><button class="outline btn-resolve" onclick="window.changeStat('resolve',1)">+</button>
-                    </div></div>
+    const tSolo = (0, _i18NJs.translations)[config.lang].solo || {
+        types: {},
+        suits: {}
+    };
+    const history = character.sceneHistory || [];
+    const current = character.currentCard;
+    // Construcción del HTML de las Cartas (Pág 2 PDF)
+    const soloHTML = `
+    <article class="solo-container" style="border: 2px dashed var(--primary); padding: 0.8rem; margin-top: 1rem;">
+        <h6 style="margin-bottom: 0.5rem;">\u{1F0CF} ${tSolo.sceneManager || "Gesti\xf3n de Escenas"}</h6>
+        
+        ${current ? `
+            <div style="text-align:center; padding:1rem; background:rgba(0,0,0,0.05); border-radius:8px; border: 1px solid var(--primary);">
+                <h2 style="margin:0; color:${[
+        'H',
+        'D'
+    ].includes(current.s) ? '#c62828' : 'inherit'}">
+                    ${current.v}${window.getSuitIcon(current.s)}
+                </h2>
+                <p style="margin: 0.5rem 0;"><small>${tSolo.types[current.v] || "Desaf\xedo"}</small></p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button onclick="window.resolveScene(true)" style="margin:0">\u{2705} ${tSolo.win || "\xc9xito"}</button>
+                    <button class="secondary" onclick="window.resolveScene(false)" style="margin:0">\u{274C} ${tSolo.lose || 'Fallo'}</button>
                 </div>
-                <button id="btn-open-roll" style="margin-top:1.5rem; width:100%">${t.rollBtn}</button>
-            </article>
-            <div>
-                <article style="border-left:4px solid #2e7d32; margin-bottom:1rem"><h5>\u{2B50} ${t.perk}s</h5><ul style="font-size:0.9rem">${character.perks.map((p)=>`<li>${p}</li>`).join('') || '<li>-</li>'}</ul></article>
-                <article style="border-left:4px solid #c62828; margin-bottom:1rem"><h5>\u{26A0}\u{FE0F} ${t.quirk}s</h5><ul style="font-size:0.9rem">${character.quirks.map((q)=>`<li>${q}</li>`).join('') || '<li>-</li>'}</ul></article>
-                <article style="border-left:4px solid var(--primary)"><h5>\u{1FA79} ${t.afflictions}</h5>
-                    ${character.afflictions.map((a, i)=>`<div class="affliction-item"><span>${a}</span><div style="display:flex; gap:4px">
-                        <button class="outline" onclick="window.promoteAffliction(${i})" style="padding:2px 8px; margin:0">+</button>
-                        <button class="outline secondary" onclick="window.removeAffliction(${i})" style="padding:2px 8px; margin:0">\u{2715}</button>
-                    </div></div>`).join('') || '<p>-</p>'}
-                </article>
             </div>
-        </div>`;
-    document.getElementById('quick-char-select').onchange = (e)=>{
-        character = chars.find((c)=>c.id == e.target.value);
-        render();
-    };
-    document.getElementById('btn-edit-mode').onclick = ()=>{
-        isEditingSheet = true;
-        render();
-    };
-    document.getElementById('btn-back-menu').onclick = ()=>{
-        character = null;
-        render();
-    };
-    document.getElementById('btn-open-roll').onclick = ()=>openRollModal(t);
+        ` : `
+            <button class="contrast" onclick="window.drawSceneCard()" style="width:100%">${tSolo.drawCard || 'Sacar Carta de Escena'}</button>
+        `}
+
+        <div style="margin-top:0.8rem; display:flex; gap:5px; flex-wrap:wrap; justify-content: center;">
+            ${history.map((c)=>`
+                <span style="opacity:${c.success ? 1 : 0.3}; font-size: 1.2rem;" title="${c.v}${c.s}">
+                    ${c.v}${window.getSuitIcon(c.s)}
+                </span>
+            `).join('')}
+        </div>
+    </article>
+    `;
+    // Renderizado principal del Dashboard
+    main.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+        <button class="outline" onclick="character=null;render()" style="padding:0.2rem 0.5rem; margin:0">\u{2190} ${t.back}</button>
+        <button class="outline" onclick="isEditingSheet=true;render()" style="padding:0.2rem 0.5rem; margin:0">\u{270F}\u{FE0F} ${t.edit}</button>
+    </div>
+    
+    <article>
+        <header>
+            <h4 style="margin:0">${character.name}</h4>
+            <small>${character.concept}</small>
+        </header>
+        
+        <div class="grid">
+            <div style="text-align:center; border:1px solid var(--primary); padding:0.5rem; border-radius:8px">
+                <small>${t.karma}</small>
+                <div style="display:flex; align-items:center; justify-content:center; gap:10px">
+                    <button class="outline" onclick="changeStat('karma',-1)" style="padding:0 0.5rem">-</button>
+                    <strong>${character.karma}</strong>
+                    <button class="outline" onclick="changeStat('karma',1)" style="padding:0 0.5rem">+</button>
+                </div>
+            </div>
+            <div style="text-align:center; border:1px solid var(--primary); padding:0.5rem; border-radius:8px">
+                <small>${t.resolve}</small>
+                <div style="display:flex; align-items:center; justify-content:center; gap:10px">
+                    <button class="outline" onclick="changeStat('resolve',-1)" style="padding:0 0.5rem">-</button>
+                    <strong>${character.resolve}</strong>
+                    <button class="outline" onclick="changeStat('resolve',1)" style="padding:0 0.5rem">+</button>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="openRollModal()" style="margin-top:1rem; width:100%">${t.rollBtn}</button>
+        
+        ${soloHTML} 
+    </article>
+
+    <div class="grid">
+        <article><h6>${t.perk}s</h6><ul>${character.perks.map((p)=>`<li>${p}</li>`).join('')}</ul></article>
+        <article><h6>${t.quirk}s</h6><ul>${character.quirks.map((q)=>`<li>${q}</li>`).join('')}</ul></article>
+    </div>
+    
+    <article>
+        <h6>${t.afflictions}</h6>
+        <div style="display:flex; flex-wrap:wrap; gap:0.5rem">
+            ${character.afflictions.map((a, i)=>`
+                <mark style="padding:0.2rem 0.5rem; border-radius:4px; display:flex; align-items:center; gap:5px">
+                    ${a} <span style="cursor:pointer; font-weight:bold" onclick="removeAffliction(${i})">\xd7</span>
+                </mark>
+            `).join('')}
+        </div>
+    </article>`;
 }
 function renderEditView(t) {
     const traitOpts = Object.entries(t.traits).map(([k, v])=>`<option value="${k}" ${character.trait === k ? 'selected' : ''}>${v}</option>`).join('');
@@ -992,6 +1039,139 @@ document.getElementById('roll-form').onsubmit = (e)=>{
         checkAndPersist();
     });
 };
+// --- LÓGICA DEL ORÁCULO (Pág. 1 del PDF) ---
+window.rollOracle = ()=>{
+    const target = parseInt(document.getElementById('oracle-prob').value);
+    const d6 = Math.floor(Math.random() * 6) + 1;
+    const caveatRoll = Math.floor(Math.random() * 6) + 1;
+    const isYes = d6 >= target;
+    const output = document.getElementById('oracle-output');
+    const answer = document.getElementById('oracle-answer');
+    const caveat = document.getElementById('oracle-caveat');
+    output.classList.remove('hidden');
+    answer.innerText = isYes ? "S\xcd" : "NO";
+    answer.style.color = isYes ? "var(--primary)" : "#c62828";
+    // Regla "Adding a Caveat" (Pág 1): 1-2 = Pero..., 5-6 = Y además...
+    if (caveatRoll <= 2) caveat.innerText = "...pero (but)";
+    else if (caveatRoll >= 5) caveat.innerText = "...y adem\xe1s (and)";
+    else caveat.innerText = "";
+};
+window.runIntermission = (type)=>{
+    if (type === 'relax') {
+        // Relajarse (Pág 2): Recupera Resolve pero 1 en 6 de problema
+        character.resolve = character.maxResolve;
+        const problem = Math.floor(Math.random() * 6) + 1 === 1;
+        alert("Te has relajado: Resoluci\xf3n al m\xe1ximo." + (problem ? "\n\u26A0\uFE0F \xa1Pero algo ha ido mal!" : ""));
+    } else {
+        // Planear (Pág 2): Gana 1 Karma
+        character.karma = Math.min(character.karma + 1, character.maxKarma);
+        alert("Has trazado un plan: +1 Karma.");
+    }
+    checkAndPersist();
+};
+window.generateTwist = ()=>{
+    // Tabla de Giros (Twists) sugerida en el PDF
+    const twists = [
+        "Un nuevo peligro aparece",
+        "Un NPC cambia de actitud",
+        "Algo no es lo que parece",
+        "Aparece una complicaci\xf3n f\xedsica",
+        "El tiempo se agota",
+        "Un recurso se pierde o rompe"
+    ];
+    alert("GIRO ARGUMENTAL:\n" + twists[Math.floor(Math.random() * twists.length)]);
+};
+window.advanceScene = ()=>{
+    const t = (0, _i18NJs.translations)[config.lang];
+    // Actualizamos textos del modal de intermedio antes de abrir
+    document.getElementById('txt-intermission-title').innerText = t.intermissionTitle || "Intermission";
+    document.getElementById('txt-relax-desc').innerText = t.relaxDesc || "Recover all Resolve, but roll 1d6: on a 1, a complication occurs.";
+    document.getElementById('txt-plan-desc').innerText = t.planDesc || "Gain +1 Karma while you prepare your next move.";
+    document.getElementById('intermission-modal').showModal();
+};
+window.handleIntermission = (type)=>{
+    const t = (0, _i18NJs.translations)[config.lang];
+    if (type === 'relax') {
+        character.resolve = character.maxResolve;
+        // Regla PDF: 1 en d6 es complicación
+        const roll = Math.floor(Math.random() * 6) + 1;
+        if (roll === 1) alert("\u26A0\uFE0F " + (t.relaxComplication || "Complication! Something went wrong while resting."));
+        else alert("\u2705 " + (t.confirmRelax || "Recovered to Max Resolve."));
+    } else if (type === 'plan') {
+        character.karma = Math.min(character.karma + 1, character.maxKarma);
+        alert("\u2705 " + (t.confirmPlan || "Gained +1 Karma."));
+    }
+    // Avanzar contador de escena
+    character.scene = (character.scene || 1) + 1;
+    document.getElementById('intermission-modal').close();
+    // USAMOS EL NOMBRE CORRECTO DE TU ARCHIVO
+    checkAndPersist();
+};
+const originalAddChar = (0, _storeJs.Store).addChar;
+(0, _storeJs.Store).addChar = (char)=>{
+    if (!char.scene) char.scene = 1;
+    return originalAddChar(char);
+};
+// --- MOTOR DE CARTAS SOLO (Pág. 2 PDF) ---
+window.getSuitIcon = (s)=>{
+    const icons = {
+        'H': "\u2665\uFE0F",
+        'D': "\u2666\uFE0F",
+        'S': "\u2660\uFE0F",
+        'C': "\u2663\uFE0F"
+    };
+    return icons[s] || s;
+};
+window.drawSceneCard = ()=>{
+    const VALUES = [
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+        '10',
+        'J',
+        'Q',
+        'K',
+        'A'
+    ];
+    const SUITS = [
+        'H',
+        'D',
+        'S',
+        'C'
+    ];
+    if (!character.deck || character.deck.length === 0) {
+        character.deck = [];
+        SUITS.forEach((s)=>VALUES.forEach((v)=>character.deck.push({
+                    v,
+                    s
+                })));
+    }
+    const idx = Math.floor(Math.random() * character.deck.length);
+    const card = character.deck.splice(idx, 1)[0];
+    character.currentCard = card;
+    character.sceneHistory = character.sceneHistory || [];
+    // Si es J, Q, K, A (Figuras)
+    if ([
+        'J',
+        'Q',
+        'K',
+        'A'
+    ].includes(card.v)) alert("\xa1EVENTO ESPECIAL!\n" + card.v + window.getSuitIcon(card.s));
+    checkAndPersist(); // Esto guardará y re-renderizará
+};
+window.resolveScene = (success)=>{
+    character.sceneHistory.push({
+        ...character.currentCard,
+        success
+    });
+    character.currentCard = null;
+    checkAndPersist();
+};
 document.getElementById('close-modal').onclick = ()=>modal.open = false;
 document.addEventListener('DOMContentLoaded', render);
 
@@ -1062,7 +1242,60 @@ const translations = {
             crafty: "Crafty"
         },
         update: "Save Changes",
-        useQuirk: "Use Quirk (-1 Diff, -1 Karma)"
+        useQuirk: "Use Quirk (-1 Diff, -1 Karma)",
+        oracleTitle: "Or\xe1culo Solitario",
+        oracleLikely: "Probable (3+)",
+        oracleMaybe: "Quiz\xe1s (4+)",
+        oracleUnlikely: "Improbable (5+)",
+        oracleVLikely: "Muy Probable (2+)",
+        oracleVUnlikely: "Muy Improbable (6)",
+        intermission: "Intermedio",
+        relax: "Relajarse",
+        plan: "Planear",
+        twist: "Giro (Twist)",
+        sceneCount: "Escena Actual",
+        nextScene: "Siguiente Escena",
+        intermissionTitle: "Escena de Intermedio",
+        relaxDesc: "Recupera toda tu Resoluci\xf3n, pero lanza 1d6: con un 1 ocurre una complicaci\xf3n.",
+        planDesc: "Gana +1 punto de Karma mientras preparas tu siguiente movimiento.",
+        confirmRelax: "Te has relajado y recuperado Resoluci\xf3n. \xbfHa surgido alg\xfan problema? (1 en d6)",
+        confirmPlan: "Has trazado un plan. +1 Karma a\xf1adido.",
+        sceneCount: "Scene",
+        nextScene: "Next Scene",
+        intermissionTitle: "Intermission Scene",
+        relaxDesc: "Recover all Resolve, but roll 1d6: on a 1, a complication occurs.",
+        planDesc: "Gain +1 Karma while you prepare your next move.",
+        relaxComplication: "Complication! Something went wrong while resting.",
+        confirmRelax: "Resolve fully restored.",
+        confirmPlan: "Karma increased.",
+        cards: {
+            draw: "Sacar Carta de Escena",
+            resolve: "Resolver Escena",
+            win: "\xa1Superada!",
+            lose: "Fallida",
+            final: "ESCENA FINAL",
+            suits: {
+                H: "\u2665\uFE0F",
+                D: "\u2666\uFE0F",
+                S: "\u2660\uFE0F",
+                C: "\u2663\uFE0F"
+            },
+            types: {
+                2: "Obst\xe1culo F\xedsico",
+                3: "Encuentro Social",
+                4: "Peligro Ambiental",
+                5: "Reto T\xe9cnico",
+                6: "Misterio/Pista",
+                7: "Combate Menor",
+                8: "Dilema Moral",
+                9: "Carrera contra el tiempo",
+                10: "Emboscada/Trampa",
+                J: "Avance de Trama (+Carta)",
+                Q: "Avance de Subtrama (+Carta)",
+                K: "Giro Inesperado (+Carta)",
+                A: "Evento Mayor (+Carta)"
+            }
+        }
     },
     es: {
         add: "A\xf1adir",
@@ -1126,7 +1359,60 @@ const translations = {
             crafty: "Astuto"
         },
         update: "Guardar Cambios",
-        useQuirk: "Usar Defecto (-1 Dif, -1 Karma)"
+        useQuirk: "Usar Defecto (-1 Dif, -1 Karma)",
+        oracleTitle: "Or\xe1culo Solitario",
+        oracleLikely: "Probable (3+)",
+        oracleMaybe: "Quiz\xe1s (4+)",
+        oracleUnlikely: "Improbable (5+)",
+        oracleVLikely: "Muy Probable (2+)",
+        oracleVUnlikely: "Muy Improbable (6)",
+        intermission: "Intermedio",
+        relax: "Relajarse",
+        plan: "Planear",
+        twist: "Giro (Twist)",
+        sceneCount: "Escena Actual",
+        nextScene: "Siguiente Escena",
+        intermissionTitle: "Escena de Intermedio",
+        relaxDesc: "Recupera toda tu Resoluci\xf3n, pero lanza 1d6: con un 1 ocurre una complicaci\xf3n.",
+        planDesc: "Gana +1 punto de Karma mientras preparas tu siguiente movimiento.",
+        confirmRelax: "Te has relajado y recuperado Resoluci\xf3n. \xbfHa surgido alg\xfan problema? (1 en d6)",
+        confirmPlan: "Has trazado un plan. +1 Karma a\xf1adido.",
+        sceneCount: "Escena",
+        nextScene: "Siguiente Escena",
+        intermissionTitle: "Escena de Intermedio",
+        relaxDesc: "Recuperas toda tu Resoluci\xf3n, pero si sacas un 1 en 1d6, surge una complicaci\xf3n.",
+        planDesc: "Ganas +1 punto de Karma (m\xe1x 3) al prepararte para lo que viene.",
+        relaxComplication: "\xa1Complicaci\xf3n! Algo ha ido mal mientras descansabas.",
+        confirmRelax: "Resoluci\xf3n restaurada por completo.",
+        confirmPlan: "Karma aumentado.",
+        cards: {
+            draw: "Sacar Carta de Escena",
+            resolve: "Resolver Escena",
+            win: "\xa1Superada!",
+            lose: "Fallida",
+            final: "ESCENA FINAL",
+            suits: {
+                H: "\u2665\uFE0F",
+                D: "\u2666\uFE0F",
+                S: "\u2660\uFE0F",
+                C: "\u2663\uFE0F"
+            },
+            types: {
+                2: "Obst\xe1culo F\xedsico",
+                3: "Encuentro Social",
+                4: "Peligro Ambiental",
+                5: "Reto T\xe9cnico",
+                6: "Misterio/Pista",
+                7: "Combate Menor",
+                8: "Dilema Moral",
+                9: "Carrera contra el tiempo",
+                10: "Emboscada/Trampa",
+                J: "Avance de Trama (+Carta)",
+                Q: "Avance de Subtrama (+Carta)",
+                K: "Giro Inesperado (+Carta)",
+                A: "Evento Mayor (+Carta)"
+            }
+        }
     }
 };
 
